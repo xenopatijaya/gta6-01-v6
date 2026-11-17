@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Porto Alba — Open-World Crime | make.fun gta6-01</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0e14;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #fff; }
+  #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #cash { position: absolute; top: 16px; left: 18px; font-size: 30px; font-weight: 800;
+    color: #7dff9a; text-shadow: 0 2px 6px rgba(0,0,0,.8); letter-spacing: 1px; }
+  #stars { position: absolute; top: 52px; left: 18px; font-size: 26px; letter-spacing: 4px;
+    text-shadow: 0 2px 6px rgba(0,0,0,.9); }
+  #minimap-wrap { position: absolute; top: 14px; right: 14px; border: 2px solid rgba(255,255,255,.55);
+    border-radius: 6px; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,.6); }
+  #minimap { display: block; width: 190px; height: 190px; }
+  #health-wrap { position: absolute; left: 18px; bottom: 18px; width: 240px; }
+  #health-bar { height: 14px; border-radius: 7px; background: #3ad86a; width: 100%;
+    box-shadow: 0 0 0 2px rgba(0,0,0,.6); transition: width .2s; }
+  #health-label { margin-top: 5px; font-size: 13px; font-weight: 700; text-shadow: 0 1px 4px #000; }
+  #ammo { margin-top: 4px; font-size: 15px; font-weight: 700; text-shadow: 0 1px 4px #000; }
+  #speed { position: absolute; right: 20px; bottom: 20px; font-size: 26px; font-weight: 800;
+    text-shadow: 0 2px 6px rgba(0,0,0,.9); }
+  #objective { position: absolute; top: 96px; left: 18px; max-width: 420px; font-size: 16px;
+    font-weight: 700; color: #ffd23c; text-shadow: 0 2px 5px rgba(0,0,0,.9); line-height: 1.35; }
+  #crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    font-size: 26px; font-weight: 300; color: rgba(255,255,255,.9); text-shadow: 0 0 4px #000; }
+  #toasts { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; width: 640px; }
+  .toast { background: rgba(10,14,20,.82); border: 1px solid rgba(255,255,255,.25);
+    border-radius: 6px; padding: 8px 16px; font-size: 15px; font-weight: 600;
+    text-align: center; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  #brief { position: absolute; top: 18%; left: 50%; transform: translateX(-50%); width: 520px;
+    background: rgba(8,12,18,.88); border: 1px solid #ffd23c; border-left: 6px solid #ffd23c;
+    border-radius: 8px; padding: 18px 22px; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
+  #brief h2 { font-size: 24px; color: #ffd23c; margin-bottom: 8px; letter-spacing: .5px; }
+  #brief p { font-size: 16px; line-height: 1.5; color: #f0f0f0; }
+  #damage-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    box-shadow: inset 0 0 90px 40px rgba(255,0,0,.55); }
+  #damage-flash.on { animation: dmg .5s ease-out; }
+  @keyframes dmg { 0% { opacity: 1; } 100% { opacity: 0; } }
+  #wanted-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    box-shadow: inset 0 0 90px 30px rgba(255,40,40,.35); }
+  #wanted-flash.on { animation: dmg .8s ease-out; }
+  #prompt { position: absolute; left: 50%; bottom: 190px; transform: translateX(-50%);
+    background: rgba(10,14,20,.85); border: 1px solid #fff; border-radius: 6px;
+    padding: 9px 18px; font-size: 16px; font-weight: 700; display: none; }
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    background: linear-gradient(180deg, rgba(6,10,16,.55) 0%, rgba(6,10,16,.82) 100%); }
+  .screen h1 { font-size: 84px; font-weight: 900; letter-spacing: 6px; color: #ffd23c;
+    text-shadow: 0 4px 0 #b8860b, 0 8px 30px rgba(0,0,0,.8); }
+  .screen h1 .alba { color: #fff; }
+  .screen .tagline { font-size: 20px; margin-top: 6px; color: #e8e8e8;
+    text-shadow: 0 2px 6px #000; }
+  .screen .story { max-width: 620px; margin: 22px 0 8px; font-size: 16px; line-height: 1.6;
+    color: #d8d8d8; text-shadow: 0 1px 4px #000; }
+  .screen .controls { margin: 14px 0 26px; font-size: 14px; line-height: 1.9; color: #b8c8d8; }
+  .screen .controls b { color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3);
+    border-radius: 4px; padding: 1px 7px; font-size: 13px; }
+  .btn { pointer-events: auto; cursor: pointer; font-size: 20px; font-weight: 800; letter-spacing: 2px;
+    color: #111; background: #ffd23c; border: none; border-radius: 8px; padding: 14px 44px;
+    box-shadow: 0 6px 0 #b8860b, 0 10px 24px rgba(0,0,0,.5); margin: 6px; }
+  .btn:hover { background: #ffe066; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b8860b; }
+  .btn.secondary { background: #e8e8e8; box-shadow: 0 6px 0 #888, 0 10px 24px rgba(0,0,0,.5); }
+  .btn.secondary:hover { background: #fff; }
+  #end-screen { display: none; }
+  #end-title { font-size: 96px; }
+  #end-body { max-width: 560px; font-size: 18px; line-height: 1.6; margin: 18px 0 24px; color: #e8e8e8; }
+  .footnote { position: absolute; bottom: 14px; font-size: 12px; color: rgba(255,255,255,.55); }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="hud"></div>
+
+<div id="start-screen" class="screen">
+  <h1>PORTO <span class="alba">ALBA</span></h1>
+  <div class="tagline">An open-world crime story on the sun-soaked coast. No rules — just the city.</div>
+  <div class="story">Kai Mercer came back to Porto Alba with $150 and a debt to Vera Solano,
+    the fixer who runs the Alba garage. Run her jobs, steal what you need, outrun the
+    Alba PD — and take the city for yourself.</div>
+  <div class="controls">
+    <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>E</b> steal / exit car<br>
+    <b>Click</b> shoot &nbsp; <b>R</b> reload &nbsp; <b>Shift</b> run &nbsp; <b>Space</b> jump / brake<br>
+    <b>J</b> new side job &nbsp; <b>M</b> mute &nbsp; <b>P</b> pause
+  </div>
+  <div>
+    <button id="start-button" class="btn">START ENGINE</button>
+    <button id="continue-button" class="btn secondary">CONTINUE</button>
+  </div>
+  <div class="footnote">Porto Alba is a fictional city. All names, characters and places are original.</div>
+</div>
+
+<div id="end-screen" class="screen">
+  <h1 id="end-title">BUSTED</h1>
+  <div id="end-body"></div>
+  <button id="end-button" class="btn">BACK TO THE STREETS</button>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
